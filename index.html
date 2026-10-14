@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>工作模式｜双面卡玩法</title>
+  <style>
+    :root {
+      --paper: #efefed;
+      --ink: #11110f;
+      --muted: #71716d;
+      --device: #171717;
+      --screen: #090909;
+      --lime: #dcff54;
+      --violet: #9f8cff;
+      --blue: #84b8ff;
+      --orange: #ff9875;
+      --yellow: #ffd45f;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    button { border: 0; font: inherit; cursor: pointer; }
+
+    .page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(270px, 1fr) 430px minmax(270px, 1fr);
+      gap: clamp(32px, 5vw, 84px);
+      align-items: center;
+      padding: clamp(32px, 5vw, 72px);
+    }
+
+    .intro { align-self: start; max-width: 440px; }
+    .intro h1 {
+      margin: 0 0 20px;
+      font-size: clamp(44px, 5vw, 78px);
+      line-height: .98;
+      letter-spacing: -.065em;
+    }
+    .intro p { margin: 0; color: var(--muted); font-size: 18px; line-height: 1.72; }
+    .principle { margin-top: 36px; padding-top: 22px; border-top: 1px solid #ccccca; }
+    .principle strong { display: block; margin-bottom: 8px; font-size: 15px; }
+    .principle span { color: var(--muted); line-height: 1.65; }
+
+    .device-stage { position: relative; display: grid; place-items: center; perspective: 1600px; }
+    .device {
+      position: relative;
+      width: 390px;
+      height: 650px;
+      padding: 14px;
+      border-radius: 42px;
+      color: white;
+      background: linear-gradient(145deg, #383838, #101010 48%, #292929);
+      box-shadow: 0 40px 80px rgba(0,0,0,.3), inset 0 0 0 1px #515151;
+      perspective: 1300px;
+      transform-style: preserve-3d;
+    }
+    .speaker {
+      position: absolute; top: 7px; left: 50%; z-index: 20;
+      width: 74px; height: 5px; transform: translateX(-50%);
+      border-radius: 8px; background: #050505;
+    }
+    .camera {
+      position: absolute; top: 19px; right: 35px; z-index: 20;
+      width: 9px; height: 9px; border-radius: 50%; background: #030303;
+      box-shadow: inset 0 0 0 2px #3e3e3e;
+    }
+
+    .device-face {
+      position: absolute;
+      inset: 14px;
+      overflow: hidden;
+      border-radius: 31px;
+      background: var(--screen);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      user-select: none;
+      pointer-events: none;
+      cursor: default;
+      transform-style: preserve-3d;
+      transition: transform .72s cubic-bezier(.2,.72,.2,1), opacity .22s ease;
+    }
+    .device-face.front { transform: rotateY(0deg); }
+    .device-face.back { transform: rotateY(180deg); }
+    .device.card-flipped .device-face.front { transform: rotateY(-180deg); }
+    .device.card-flipped .device-face.back { transform: rotateY(0deg); }
+
+    .statusbar {
+      position: relative; z-index: 10;
+      display: flex; justify-content: flex-end;
+      color: rgba(255,255,255,.68);
+      font-size: 12px;
+    }
+    .network-status { display: inline-flex; align-items: center; gap: 5px; }
+    .network-status svg { width: 14px; height: 14px; }
+
+    .front-screen {
+      height: 100%;
+      padding: 29px 25px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background:
+        radial-gradient(circle at 105% -5%, rgba(159,140,255,.25), transparent 35%),
+        linear-gradient(155deg, #111 0%, #202020 57%, #0a0a0a 100%);
+    }
+    .identity { margin-top: 44px; }
+    .avatar {
+      width: 118px; height: 118px;
+      display: grid; place-items: center;
+      border-radius: 28px;
+      color: #141414;
+      background: linear-gradient(145deg, #a9b8ff, #dfff59);
+      box-shadow: 0 20px 46px rgba(0,0,0,.35);
+      font-size: 44px; font-weight: 780;
+    }
+    .identity h2 { margin: 25px 0 7px; font-size: 40px; letter-spacing: -.05em; }
+    .identity p { margin: 0; color: #a5a5a5; font-size: 16px; }
+    .identity-meta { margin-bottom: 54px; padding-top: 25px; border-top: 1px solid #343434; }
+    .identity-meta span { display: block; color: #777; font-size: 12px; margin-bottom: 7px; }
+    .identity-meta strong { font-size: 16px; }
+    .available {
+      display: inline-flex; align-items: center; gap: 7px;
+      margin-top: 17px; padding: 9px 12px;
+      border-radius: 10px; background: #272727;
+      color: var(--lime); font-size: 12px; font-weight: 760;
+    }
+    .available::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+    .back-screen {
+      height: 100%;
+      padding: 29px 19px 22px;
+      display: flex;
+      flex-direction: column;
+      background: #0b0b0b;
+    }
+    .back-head { display: flex; justify-content: space-between; align-items: flex-end; margin: 18px 4px 14px; }
+    .back-head div:first-child { min-width: 0; }
+    .back-head small { display: block; color: #777; font-size: 11px; margin-bottom: 5px; }
+    .back-head strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; }
+    .counter { color: #858585; font-size: 12px; }
+
+    .card-window { position: relative; flex: 1; min-height: 0; }
+    .display-card {
+      position: absolute; inset: 0;
+      overflow: hidden;
+      padding: 24px;
+      border-radius: 28px;
+      opacity: 0;
+      transform: translateY(18px) scale(.975);
+      pointer-events: none;
+      transition: opacity .28s ease, transform .36s cubic-bezier(.2,.75,.2,1);
+    }
+    .display-card.active { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+    .display-card.prev { transform: translateY(-18px) scale(.975); }
+    .card-label { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 720; }
+    .card-label svg { width: 20px; height: 20px; }
+    .source-note { margin-top: 7px; font-size: 9.5px; font-weight: 400; letter-spacing: .01em; opacity: .32; }
+
+    .clock-card { color: #111; background: var(--lime); }
+    .clock-main { margin-top: 34px; }
+    .clock-time { font-size: 73px; line-height: .9; font-weight: 790; letter-spacing: -.08em; }
+    .clock-date { margin-top: 15px; font-size: 15px; font-weight: 650; }
+    .clock-zone { margin-top: 6px; color: rgba(0,0,0,.55); font-size: 11px; }
+    .clock-weather { position: absolute; left: 24px; right: 24px; bottom: 26px; display: flex; align-items: flex-end; justify-content: space-between; padding-top: 20px; border-top: 1px solid rgba(0,0,0,.16); }
+    .clock-weather .weather-now { display: flex; align-items: center; gap: 11px; }
+    .clock-weather .sun { font-size: 35px; line-height: 1; }
+    .clock-weather b { display: block; font-size: 32px; line-height: 1; letter-spacing: -.04em; }
+    .clock-weather small { display: block; margin-top: 5px; color: rgba(0,0,0,.55); font-size: 11px; }
+    .clock-weather .weather-side { text-align: right; color: rgba(0,0,0,.58); font-size: 11px; line-height: 1.7; }
+
+    .todo-card { color: white; background: #302c7a; }
+    .todo-summary { margin-top: 28px; }
+    .todo-summary b { font-size: 64px; line-height: 1; letter-spacing: -.06em; }
+    .todo-summary span { margin-left: 9px; color: rgba(255,255,255,.62); }
+    .todo-list { margin-top: 28px; }
+    .todo-item { display: flex; gap: 10px; align-items: flex-start; padding: 13px 0; border-top: 1px solid rgba(255,255,255,.13); font-size: 14px; line-height: 1.45; }
+    .todo-marker { flex: 0 0 auto; width: 7px; height: 7px; margin: 6px 5px 0 3px; transform: rotate(45deg); border-radius: 1.5px; background: rgba(255,255,255,.62); }
+    .todo-item.done { color: rgba(255,255,255,.38); text-decoration: line-through; }
+    .todo-item.done .todo-marker { background: rgba(255,255,255,.24); }
+
+    .status-card { color: #111; background: var(--orange); }
+    .status-center { position: absolute; inset: 72px 24px 38px; display: flex; flex-direction: column; justify-content: center; }
+    .status-icon { font-size: 54px; }
+    .status-word { margin-top: 18px; font-size: 61px; line-height: 1; font-weight: 800; letter-spacing: -.065em; }
+    .status-note { margin-top: 17px; max-width: 250px; color: rgba(0,0,0,.58); font-size: 14px; line-height: 1.55; }
+
+    .weather-card { color: #111; background: var(--blue); }
+    .weather-symbol { margin-top: 30px; font-size: 70px; line-height: 1; }
+    .weather-temp { margin-top: 18px; font-size: 82px; line-height: .9; font-weight: 790; letter-spacing: -.07em; }
+    .weather-desc { margin-top: 12px; font-size: 17px; font-weight: 700; }
+    .weather-data { position: absolute; left: 24px; right: 24px; bottom: 30px; display: flex; gap: 8px; }
+    .weather-data span { flex: 1; padding: 10px; border-radius: 12px; background: rgba(255,255,255,.3); font-size: 11px; line-height: 1.5; }
+
+    .name-card { color: white; background: #1b1b1b; }
+    .mini-avatar { width: 62px; height: 62px; margin-top: 24px; display: grid; place-items: center; border-radius: 17px; color: #111; background: var(--yellow); font-size: 24px; font-weight: 780; }
+    .name-card h3 { margin: 15px 0 4px; font-size: 28px; letter-spacing: -.04em; }
+    .name-card p { margin: 0; color: #888; font-size: 13px; }
+    .qr { position: absolute; right: 24px; bottom: 25px; width: 138px; height: 138px; padding: 10px; border-radius: 18px; background: white; }
+    .qr svg { width: 100%; height: 100%; }
+    .scan-copy { position: absolute; left: 24px; bottom: 32px; width: 120px; color: #888; font-size: 12px; line-height: 1.5; }
+
+    .timer-card { color: #111; background: var(--yellow); }
+    .timer-main { position: absolute; left: 24px; right: 24px; top: 50%; transform: translateY(-46%); }
+    .timer-value { font-size: 81px; line-height: .95; font-weight: 790; letter-spacing: -.075em; }
+    .timer-state { margin-top: 18px; display: inline-flex; padding: 9px 12px; border: 1px solid rgba(0,0,0,.18); border-radius: 10px; font-size: 12px; font-weight: 750; }
+    .timer-caption { position: absolute; left: 24px; bottom: 31px; color: rgba(0,0,0,.52); font-size: 12px; }
+
+    .dots { height: 41px; display: flex; align-items: center; justify-content: center; gap: 7px; }
+    .dot { width: 5px; height: 5px; border-radius: 999px; background: #404040; transition: width .25s, background .25s; }
+    .dot.active { width: 19px; background: white; }
+
+    .hardware-keys {
+      position: absolute; right: -21px; top: 196px; z-index: 40;
+      display: flex; flex-direction: column; gap: 8px;
+      transform: rotateY(0deg);
+    }
+    .hardware-key {
+      width: 24px; height: 58px;
+      display: grid; place-items: center;
+      border: 1px solid #4a4a4a;
+      border-left: 0;
+      border-radius: 0 8px 8px 0;
+      color: #afafaf;
+      background: linear-gradient(90deg,#1b1b1b,#333);
+      box-shadow: 4px 5px 10px rgba(0,0,0,.2);
+      transition: transform .12s, color .15s;
+    }
+    .hardware-key:hover { color: var(--lime); transform: translateX(2px); }
+    .hardware-key:active { transform: translateX(-1px); }
+    .hardware-key svg { width: 11px; height: 11px; }
+    .hardware-key.function-key {
+      height: 72px;
+      margin-top: 10px;
+      color: var(--lime);
+      border-color: #62684a;
+      background: linear-gradient(90deg,#24251f,#3d4230);
+    }
+    .function-mark { width: 10px; height: 28px; border-radius: 8px; background: currentColor; box-shadow: 0 0 14px rgba(220,255,84,.35); }
+
+    .flip-note {
+      position: absolute; left: 50%; top: calc(100% + 22px);
+      transform: translateX(-50%);
+      color: #6c6c68; font-size: 12px; white-space: nowrap;
+    }
+
+    .notes { align-self: end; max-width: 380px; }
+    .notes h2 { margin: 0 0 18px; font-size: 26px; letter-spacing: -.035em; }
+    .step { display: grid; grid-template-columns: 34px 1fr; gap: 14px; padding: 17px 0; border-top: 1px solid #ccccca; }
+    .step b { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #111; color: white; font-size: 12px; }
+    .step strong { display: block; margin-bottom: 5px; font-size: 15px; }
+    .step span { color: var(--muted); font-size: 14px; line-height: 1.55; }
+    .app-note { margin-top: 23px; padding: 18px; border-radius: 17px; background: #dededb; }
+    .app-note strong { display: block; margin-bottom: 7px; font-size: 14px; }
+    .app-note span { color: #686864; font-size: 13px; line-height: 1.6; }
+
+    .references {
+      display: grid;
+      grid-template-columns: minmax(170px, .35fr) 1fr;
+      gap: 28px;
+      margin: 0 clamp(32px, 5vw, 72px);
+      padding: 28px 0 42px;
+      border-top: 1px solid #ccccca;
+    }
+    .references h2 { margin: 0; font-size: 16px; }
+    .reference-links { display: flex; flex-wrap: wrap; gap: 12px; }
+    .reference-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 14px;
+      border: 1px solid #c7c7c3;
+      border-radius: 12px;
+      color: #3f3f3b;
+      background: rgba(255,255,255,.32);
+      font-size: 13px;
+      text-decoration: none;
+      transition: border-color .18s, background .18s;
+    }
+    .reference-links a:hover { border-color: #8d8d87; background: rgba(255,255,255,.68); }
+    .reference-links svg { width: 14px; height: 14px; }
+
+    @media (max-width: 1060px) {
+      .page { grid-template-columns: 1fr 430px; }
+      .notes { grid-column: 1/-1; max-width: none; display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; }
+      .notes h2, .app-note { grid-column: 1/-1; }
+      .step { display: block; }
+      .step b { margin-bottom: 11px; }
+    }
+    @media (max-width: 760px) {
+      .page { display: flex; flex-direction: column; align-items: center; padding: 30px 18px 64px; }
+      .intro { max-width: 430px; align-self: auto; }
+      .intro h1 { font-size: 48px; }
+      .principle { display: none; }
+      .device { width: min(390px, 90vw); height: min(650px, 150vw); }
+      .notes { width: min(430px,100%); display: block; margin-top: 38px; }
+      .step { display: grid; }
+      .step b { margin: 0; }
+      .references { grid-template-columns: 1fr; margin: 0 18px; }
+      .reference-links { flex-direction: column; align-items: stretch; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .device-face, .display-card, .dot { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="intro">
+      <h1>工作模式<br>双面卡玩法</h1>
+      <p>通过一张可翻面的工作卡，将身份展示与效率工具整合在同一块屏幕中。正面保持身份识别，背面集中呈现 App 配置好的工作信息。</p>
+      <div class="principle">
+        <strong>核心原则：App 负责配置，工牌负责展示与触发</strong>
+        <span>屏幕不支持触控。所有内容提前在手机 App 中完成设置，工牌端仅通过实体按键完成翻面、浏览和计时控制。</span>
+      </div>
+    </section>
+
+    <section class="device-stage" aria-label="双面数字工牌交互原型">
+      <div class="device" id="device">
+        <div class="speaker"></div>
+        <div class="camera"></div>
+
+        <section class="device-face front" id="frontFace" aria-label="工牌正面，屏幕不可交互">
+          <div class="front-screen">
+            <div>
+              <div class="statusbar"><span class="network-status" aria-label="Wi-Fi 已连接"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 9.5a11.5 11.5 0 0 1 15 0M7.5 13a7 7 0 0 1 9 0M10.5 16.5a2.5 2.5 0 0 1 3 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/></svg></span></div>
+              <div class="identity">
+                <div class="avatar">王</div>
+                <h2>王小明</h2>
+                <p>产品设计师 · 创新中心</p>
+              </div>
+            </div>
+            <div class="identity-meta">
+              <span>今日状态</span>
+              <strong>专注工作中</strong>
+              <div class="available">AVAILABLE</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="device-face back" id="backFace" aria-label="工牌背面大卡展示，屏幕不可交互">
+          <div class="back-screen">
+            <div class="statusbar"><span class="network-status" aria-label="Wi-Fi 已连接"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 9.5a11.5 11.5 0 0 1 15 0M7.5 13a7 7 0 0 1 9 0M10.5 16.5a2.5 2.5 0 0 1 3 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/></svg></span></div>
+            <div class="back-head">
+              <div><strong id="cardName">时间与天气</strong></div>
+              <span class="counter" id="counter">1 / 5</span>
+            </div>
+
+            <div class="card-window">
+              <article class="display-card clock-card active" data-name="时间与天气">
+                <div class="card-label"><span>上海 · 今日</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+                <div class="source-note">来自手机 App 的配置</div>
+                <div class="clock-main"><div class="clock-time" id="clockTime">10:28</div><div class="clock-date" id="clockDate">10月14日 星期三</div><div class="clock-zone">上海 · GMT+8</div></div>
+                <div class="clock-weather"><div class="weather-now"><span class="sun">☀</span><div><b>24°</b><small>晴 · 体感舒适</small></div></div><div class="weather-side">湿度 52%<br>东风 2级 · 空气优</div></div>
+              </article>
+
+              <article class="display-card timer-card" data-name="计时器">
+                <div class="card-label"><span>专注计时</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M9 2h6M12 5v3M18 7l2-2"/></svg></div>
+                <div class="source-note">来自手机 App 的配置</div>
+                <div class="timer-main"><div class="timer-value" id="timerValue">25:00</div><div class="timer-state" id="timerState">同时短按 ▲ ▼ 开始</div></div><div class="timer-caption">同时短按开始 / 暂停 · 同时长按重置</div>
+              </article>
+
+              <article class="display-card todo-card" data-name="待办事项">
+                <div class="card-label"><span>今日待办</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg></div>
+                <div class="source-note">来自手机 App 的配置</div>
+                <div class="todo-summary"><b>3</b><span>项待完成</span></div>
+                <div class="todo-list"><div class="todo-item done"><span class="todo-marker"></span><span>确认产品概念方向</span></div><div class="todo-item"><span class="todo-marker"></span><span>完善方案评审材料</span></div><div class="todo-item"><span class="todo-marker"></span><span>准备下午项目会议</span></div><div class="todo-item"><span class="todo-marker"></span><span>回复协作方进度</span></div></div>
+              </article>
+
+              <article class="display-card status-card" data-name="状态牌">
+                <div class="card-label"><span>当前状态</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h14v12H9l-4 4V4z"/></svg></div>
+                <div class="source-note">来自手机 App 的配置</div>
+                <div class="status-center"><div class="status-icon">◉</div><div class="status-word">专注中</div><div class="status-note">正在处理重要工作，紧急事项请直接联系。</div></div>
+              </article>
+
+              <article class="display-card name-card" data-name="我的名片">
+                <div class="card-label"><span>我的名片</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4zM8 10h4M8 14h7"/></svg></div>
+                <div class="source-note">来自手机 App 的配置</div>
+                <div class="mini-avatar">王</div><h3>王小明</h3><p>产品设计师 · 创新中心</p>
+                <div class="scan-copy">扫码保存联系方式或查看个人主页</div>
+                <div class="qr"><svg viewBox="0 0 100 100"><g fill="#111"><rect x="6" y="6" width="28" height="28"/><rect x="66" y="6" width="28" height="28"/><rect x="6" y="66" width="28" height="28"/><rect x="43" y="10" width="9" height="9"/><rect x="48" y="29" width="12" height="12"/><rect x="40" y="48" width="15" height="15"/><rect x="63" y="44" width="9" height="9"/><rect x="78" y="43" width="16" height="11"/><rect x="44" y="72" width="9" height="22"/><rect x="60" y="61" width="14" height="14"/><rect x="81" y="65" width="13" height="29"/><rect x="59" y="84" width="12" height="10"/></g></svg></div>
+              </article>
+
+            </div>
+
+            <div class="dots" id="dots" aria-label="卡片位置"></div>
+          </div>
+        </section>
+
+        <div class="hardware-keys" aria-label="实体控制按键">
+          <button class="hardware-key" id="prevButton" aria-label="上一张卡片" title="上一张卡片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 15l6-6 6 6"/></svg></button>
+          <button class="hardware-key" id="nextButton" aria-label="下一张卡片" title="下一张卡片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></button>
+          <button class="hardware-key function-key" id="functionButton" aria-label="功能键，双击卡片翻面" title="功能键：双击翻面"><span class="function-mark"></span></button>
+        </div>
+      </div>
+      <div class="flip-note">上下键切换 · 同时按键控制计时 · 双击功能键翻面</div>
+    </section>
+
+    <aside class="notes">
+      <h2>主要操作链路</h2>
+      <div class="step"><b>1</b><div><strong>手机 App 完成配置</strong><span>选择背面需要展示的功能卡、调整卡片顺序，并设置名片、待办、状态及计时时长。</span></div></div>
+      <div class="step"><b>2</b><div><strong>正面常驻身份信息</strong><span>日常默认展示姓名、职位和工作状态，用于快速识别；屏幕本身不响应触控。</span></div></div>
+      <div class="step"><b>3</b><div><strong>双击功能键完成翻面</strong><span>设备外壳保持不动，屏幕中的卡片通过 3D 动画翻到背面，进入工作信息展示。</span></div></div>
+      <div class="step"><b>4</b><div><strong>上下键浏览功能卡</strong><span>单独按上键或下键，依次切换时间天气、计时器、待办、状态和个人名片。</span></div></div>
+      <div class="step"><b>5</b><div><strong>组合键控制计时器</strong><span>在计时器卡片上同时短按上下键开始、暂停或继续；同时长按约 2 秒停止并恢复初始时长。</span></div></div>
+      <div class="app-note"><strong>一句话汇报</strong><span>用户在 App 中完成复杂设置，在工牌上通过实体按键快速查看和触发，实现“一面身份、一面工作”的双面卡体验。</span></div>
+    </aside>
+  </main>
+
+  <footer class="references">
+    <h2>可参考竞品</h2>
+    <div class="reference-links">
+      <a href="https://commandline.microsoft.com/project-solara-build-2026/" target="_blank" rel="noreferrer"><span>Project Solara Badge Concept</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 5h5v5M10 14l9-9M19 14v5H5V5h5"/></svg></a>
+      <a href="https://www.xiaohongshu.com/discovery/item/6a868b97000000002702b42f?source=webshare&amp;xhsshare=pc_web&amp;xsec_token=ABRNWajtzrhwbLdVuqRY3L0s9YiuaoUGIC8Ej9DW0-U7I=&amp;xsec_source=pc_share" target="_blank" rel="noreferrer"><span>小红书参考案例</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 5h5v5M10 14l9-9M19 14v5H5V5h5"/></svg></a>
+      <a href="https://www.xiaohongshu.com/discovery/item/6aa3783d00000000120026d7?source=webshare&amp;xhsshare=pc_web&amp;xsec_token=ABb9H0gdn34eVGW7aIMoDhdb3YI_1B7-lJhTihGhqNv30=&amp;xsec_source=pc_share" target="_blank" rel="noreferrer"><span>小红书参考案例 02</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 5h5v5M10 14l9-9M19 14v5H5V5h5"/></svg></a>
+    </div>
+  </footer>
+
+  <script>
+    const device = document.querySelector('#device');
+    const cards = [...document.querySelectorAll('.display-card')];
+    const dots = document.querySelector('#dots');
+    const cardName = document.querySelector('#cardName');
+    const counter = document.querySelector('#counter');
+    const functionButton = document.querySelector('#functionButton');
+    let isBack = false;
+    let activeCard = 0;
+
+    cards.forEach((_, index) => {
+      const dot = document.createElement('span');
+      dot.className = `dot${index === 0 ? ' active' : ''}`;
+      dots.appendChild(dot);
+    });
+
+    function flipCard() {
+      isBack = !isBack;
+      device.classList.toggle('card-flipped', isBack);
+    }
+
+    function showCard(nextIndex, direction) {
+      if (!isBack) return;
+      const normalized = (nextIndex + cards.length) % cards.length;
+      cards.forEach((card, index) => {
+        card.classList.toggle('active', index === normalized);
+        card.classList.toggle('prev', index !== normalized && direction < 0);
+      });
+      [...dots.children].forEach((dot, index) => dot.classList.toggle('active', index === normalized));
+      activeCard = normalized;
+      cardName.textContent = cards[activeCard].dataset.name;
+      counter.textContent = `${activeCard + 1} / ${cards.length}`;
+    }
+
+    document.querySelector('#prevButton').addEventListener('click', event => {
+      event.stopPropagation();
+      showCard(activeCard - 1, -1);
+    });
+    document.querySelector('#nextButton').addEventListener('click', event => {
+      event.stopPropagation();
+      showCard(activeCard + 1, 1);
+    });
+
+    functionButton.addEventListener('dblclick', event => {
+      event.preventDefault();
+      flipCard();
+    });
+
+    function updateTime() {
+      const now = new Date();
+      const time = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const date = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
+      document.querySelector('#clockTime').textContent = time;
+      document.querySelector('#clockDate').textContent = date;
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+  </script>
+</body>
+</html>

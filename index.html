@@ -63,20 +63,25 @@
       perspective: 1300px;
       transform-style: preserve-3d;
     }
+    .screen-flipper {
+      position: absolute;
+      inset: 14px;
+      border-radius: 31px;
+      transform: rotateY(0deg);
+      transform-origin: 50% 50%;
+      transform-style: preserve-3d;
+      will-change: transform;
+      transition: transform .76s cubic-bezier(.42,0,.58,1);
+    }
+    .device.card-flipped .screen-flipper { transform: rotateY(180deg); }
     .speaker {
       position: absolute; top: 7px; left: 50%; z-index: 20;
       width: 74px; height: 5px; transform: translateX(-50%);
       border-radius: 8px; background: #050505;
     }
-    .camera {
-      position: absolute; top: 19px; right: 35px; z-index: 20;
-      width: 9px; height: 9px; border-radius: 50%; background: #030303;
-      box-shadow: inset 0 0 0 2px #3e3e3e;
-    }
-
     .device-face {
       position: absolute;
-      inset: 14px;
+      inset: 0;
       overflow: hidden;
       border-radius: 31px;
       background: var(--screen);
@@ -86,21 +91,9 @@
       pointer-events: none;
       cursor: default;
       transform-style: preserve-3d;
-      transition: transform .72s cubic-bezier(.2,.72,.2,1), opacity .22s ease;
     }
     .device-face.front { transform: rotateY(0deg); }
     .device-face.back { transform: rotateY(180deg); }
-    .device.card-flipped .device-face.front { transform: rotateY(-180deg); }
-    .device.card-flipped .device-face.back { transform: rotateY(0deg); }
-
-    .statusbar {
-      position: relative; z-index: 10;
-      display: flex; justify-content: flex-end;
-      color: rgba(255,255,255,.68);
-      font-size: 12px;
-    }
-    .network-status { display: inline-flex; align-items: center; gap: 5px; }
-    .network-status svg { width: 14px; height: 14px; }
 
     .front-screen {
       height: 100%;
@@ -212,7 +205,11 @@
     .timer-main { position: absolute; left: 24px; right: 24px; top: 50%; transform: translateY(-46%); }
     .timer-value { font-size: 81px; line-height: .95; font-weight: 790; letter-spacing: -.075em; }
     .timer-state { margin-top: 18px; display: inline-flex; padding: 9px 12px; border: 1px solid rgba(0,0,0,.18); border-radius: 10px; font-size: 12px; font-weight: 750; }
-    .timer-caption { position: absolute; left: 24px; bottom: 31px; color: rgba(0,0,0,.52); font-size: 12px; }
+    .timer-caption {
+      position: absolute; left: 24px; bottom: 31px;
+      display: flex; flex-direction: column; gap: 6px;
+      color: rgba(0,0,0,.56); font-size: 12px; line-height: 1.4;
+    }
 
     .dots { height: 41px; display: flex; align-items: center; justify-content: center; gap: 7px; }
     .dot { width: 5px; height: 5px; border-radius: 999px; background: #404040; transition: width .25s, background .25s; }
@@ -308,7 +305,7 @@
       .reference-links { flex-direction: column; align-items: stretch; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .device-face, .display-card, .dot { transition: none; }
+      .screen-flipper, .display-card, .dot { transition: none; }
     }
   </style>
 </head>
@@ -326,12 +323,11 @@
     <section class="device-stage" aria-label="双面数字工牌交互原型">
       <div class="device" id="device">
         <div class="speaker"></div>
-        <div class="camera"></div>
 
-        <section class="device-face front" id="frontFace" aria-label="工牌正面，屏幕不可交互">
+        <div class="screen-flipper" id="screenFlipper">
+          <section class="device-face front" id="frontFace" aria-label="工牌正面，屏幕不可交互">
           <div class="front-screen">
             <div>
-              <div class="statusbar"><span class="network-status" aria-label="Wi-Fi 已连接"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 9.5a11.5 11.5 0 0 1 15 0M7.5 13a7 7 0 0 1 9 0M10.5 16.5a2.5 2.5 0 0 1 3 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/></svg></span></div>
               <div class="identity">
                 <div class="avatar">王</div>
                 <h2>王小明</h2>
@@ -341,14 +337,13 @@
             <div class="identity-meta">
               <span>今日状态</span>
               <strong>专注工作中</strong>
-              <div class="available">AVAILABLE</div>
+              <div class="available">已配置 NFC</div>
             </div>
           </div>
-        </section>
+          </section>
 
-        <section class="device-face back" id="backFace" aria-label="工牌背面大卡展示，屏幕不可交互">
+          <section class="device-face back" id="backFace" aria-label="工牌背面大卡展示，屏幕不可交互">
           <div class="back-screen">
-            <div class="statusbar"><span class="network-status" aria-label="Wi-Fi 已连接"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4.5 9.5a11.5 11.5 0 0 1 15 0M7.5 13a7 7 0 0 1 9 0M10.5 16.5a2.5 2.5 0 0 1 3 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/></svg></span></div>
             <div class="back-head">
               <div><strong id="cardName">时间与天气</strong></div>
               <span class="counter" id="counter">1 / 5</span>
@@ -365,7 +360,8 @@
               <article class="display-card timer-card" data-name="计时器">
                 <div class="card-label"><span>专注计时</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M9 2h6M12 5v3M18 7l2-2"/></svg></div>
                 <div class="source-note">来自手机 App 的配置</div>
-                <div class="timer-main"><div class="timer-value" id="timerValue">25:00</div><div class="timer-state" id="timerState">同时短按 ▲ ▼ 开始</div></div><div class="timer-caption">同时短按开始 / 暂停 · 同时长按重置</div>
+                <div class="timer-main"><div class="timer-value" id="timerValue">25:00</div><div class="timer-state" id="timerState">准备开始</div></div>
+                <div class="timer-caption"><span>开始 / 暂停：同时短按 ▲ + ▼</span><span>重置：同时长按 ▲ + ▼ 2 秒</span></div>
               </article>
 
               <article class="display-card todo-card" data-name="待办事项">
@@ -393,7 +389,8 @@
 
             <div class="dots" id="dots" aria-label="卡片位置"></div>
           </div>
-        </section>
+          </section>
+        </div>
 
         <div class="hardware-keys" aria-label="实体控制按键">
           <button class="hardware-key" id="prevButton" aria-label="上一张卡片" title="上一张卡片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 15l6-6 6 6"/></svg></button>
@@ -410,7 +407,7 @@
       <div class="step"><b>2</b><div><strong>正面常驻身份信息</strong><span>日常默认展示姓名、职位和工作状态，用于快速识别；屏幕本身不响应触控。</span></div></div>
       <div class="step"><b>3</b><div><strong>双击功能键完成翻面</strong><span>设备外壳保持不动，屏幕中的卡片通过 3D 动画翻到背面，进入工作信息展示。</span></div></div>
       <div class="step"><b>4</b><div><strong>上下键浏览功能卡</strong><span>单独按上键或下键，依次切换时间天气、计时器、待办、状态和个人名片。</span></div></div>
-      <div class="step"><b>5</b><div><strong>组合键控制计时器</strong><span>在计时器卡片上同时短按上下键开始、暂停或继续；同时长按约 2 秒停止并恢复初始时长。</span></div></div>
+      <div class="step"><b>5</b><div><strong>组合键控制计时器</strong><span>进入计时器卡片后，同时短按上下键开始；再次同时短按可暂停或继续；同时长按约 2 秒恢复预设时长。</span></div></div>
       <div class="app-note"><strong>一句话汇报</strong><span>用户在 App 中完成复杂设置，在工牌上通过实体按键快速查看和触发，实现“一面身份、一面工作”的双面卡体验。</span></div>
     </aside>
   </main>
